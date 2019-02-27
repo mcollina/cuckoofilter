@@ -11,7 +11,8 @@ class NapiStringHash {
     }
 };
 
-class Cuckoo : public Napi::ObjectWrap<Cuckoo> {
+template <size_t bits_per_item>
+class Cuckoo : public Napi::ObjectWrap<Cuckoo<bits_per_item>> {
  public:
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
   Cuckoo(const Napi::CallbackInfo& info);
@@ -25,7 +26,7 @@ class Cuckoo : public Napi::ObjectWrap<Cuckoo> {
   Napi::Value SizeInBytes(const Napi::CallbackInfo& info);
 
   static Napi::FunctionReference constructor;
-  cuckoofilter::CuckooFilter<Napi::String, 12, cuckoofilter::SingleTable, NapiStringHash> *filter;
+  cuckoofilter::CuckooFilter<Napi::String, bits_per_item, cuckoofilter::SingleTable, NapiStringHash> *filter;
 };
 
 #endif

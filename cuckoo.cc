@@ -1,16 +1,19 @@
 #include "./cuckoo.h"
+#include <napi.h>
 
-Napi::FunctionReference Cuckoo::constructor;
+template <size_t bits_per_item>
+Napi::FunctionReference Cuckoo<bits_per_item>::constructor;
 
 Napi::String Method(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   return Napi::String::New(env, "world");
 }
 
-Napi::Object Cuckoo::Init(Napi::Env env, Napi::Object exports) {
+template <size_t bits_per_item>
+Napi::Object Cuckoo<bits_per_item>::Init(Napi::Env env, Napi::Object exports) {
   Napi::HandleScope scope(env);
 
-  Napi::Function func = DefineClass(env, "CuckooFilter", {
+  Napi::Function func = DefineClass(env, "CuckooFilter" + std::to_string(bits_per_item), {
     InstanceMethod("add", &Cuckoo::Add),
     InstanceMethod("contain", &Cuckoo::Contain),
     InstanceMethod("delete", &Cuckoo::Delete),
@@ -25,7 +28,8 @@ Napi::Object Cuckoo::Init(Napi::Env env, Napi::Object exports) {
   return exports;
 }
 
-Cuckoo::Cuckoo(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Cuckoo>(info)  {
+template <size_t bits_per_item>
+Cuckoo<bits_per_item>::Cuckoo(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Cuckoo<bits_per_item>>(info)  {
   const Napi::Env env = info.Env();
 
   if (info.Length() != 1) {
@@ -40,14 +44,16 @@ Cuckoo::Cuckoo(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Cuckoo>(info) 
 
   Napi::Number num = info[0].As<Napi::Number>();
 
-  this->filter = new cuckoofilter::CuckooFilter<Napi::String, 12, cuckoofilter::SingleTable, NapiStringHash>(num.Uint32Value());
+  this->filter = new cuckoofilter::CuckooFilter<Napi::String, bits_per_item, cuckoofilter::SingleTable, NapiStringHash>(num.Uint32Value());
 }
 
-Cuckoo::~Cuckoo() {
+template <size_t bits_per_item>
+Cuckoo<bits_per_item>::~Cuckoo() {
   delete this->filter;
 }
 
-Napi::Value Cuckoo::Add(const Napi::CallbackInfo& info) {
+template <size_t bits_per_item>
+Napi::Value Cuckoo<bits_per_item>::Add(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
 
   if (info.Length() != 1) {
@@ -82,7 +88,8 @@ Napi::Value Cuckoo::Add(const Napi::CallbackInfo& info) {
   }
 }
 
-Napi::Value Cuckoo::Contain(const Napi::CallbackInfo& info) {
+template <size_t bits_per_item>
+Napi::Value Cuckoo<bits_per_item>::Contain(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
 
   if (info.Length() != 1) {
@@ -104,7 +111,8 @@ Napi::Value Cuckoo::Contain(const Napi::CallbackInfo& info) {
   }
 }
 
-Napi::Value Cuckoo::Delete(const Napi::CallbackInfo& info) {
+template <size_t bits_per_item>
+Napi::Value Cuckoo<bits_per_item>::Delete(const Napi::CallbackInfo& info) {
   const Napi::Env env = info.Env();
 
   if (info.Length() != 1) {
@@ -132,19 +140,26 @@ Napi::Value Cuckoo::Delete(const Napi::CallbackInfo& info) {
   }
 }
 
-Napi::Value Cuckoo::Size(const Napi::CallbackInfo& info) {
+template <size_t bits_per_item>
+Napi::Value Cuckoo<bits_per_item>::Size(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   return Napi::Number::New(env, this->filter->Size());
 }
 
-Napi::Value Cuckoo::SizeInBytes(const Napi::CallbackInfo& info) {
+template <size_t bits_per_item>
+Napi::Value Cuckoo<bits_per_item>::SizeInBytes(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   return Napi::Number::New(env, this->filter->SizeInBytes());
 }
 
-Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  return Cuckoo::Init(env, exports);
+Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
+  Cuckoo<2>::Init(env, exports);
+  Cuckoo<4>::Init(env, exports);
+  Cuckoo<8>::Init(env, exports);
+  Cuckoo<12>::Init(env, exports);
+  Cuckoo<16>::Init(env, exports);
+  Cuckoo<32>::Init(env, exports);
+  return exports;
 }
 
-NODE_API_MODULE(NODE_GYP_MODULE_NAME, Init)
-
+NODE_API_MODULE(NODE_GYP_MODULE_NAME, InitAll)
